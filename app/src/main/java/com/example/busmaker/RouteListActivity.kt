@@ -17,6 +17,7 @@ import com.example.busmaker.data.model.RouteStationItemDetail
 import com.example.busmaker.data.model.RouteSegment
 import com.example.busmaker.utils.WalkingTimeEstimator
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class RouteListActivity : AppCompatActivity() {
 
@@ -182,19 +183,36 @@ class RouteListActivity : AppCompatActivity() {
                                                             )
                                                         else 0
 
-                                                    // 2. 버스 이동 시간 (정류장 당 2분, nodeOrder 사용)
-                                                    val startOrder = identifiedStartStation.nodeOrder ?: 0
-                                                    val endOrder = identifiedEndStation.nodeOrder ?: 0
-                                                    val totalStops = stations.maxOfOrNull { it.nodeOrder ?: 0 } ?: 0
+                                                    // 2. 버스 이동 시간 (정류장 당 2분, nodeId 조합 중 최소값)
+                                                    // 1. 출발/도착 정류장 이름을 가져온다
+                                                    val startName = identifiedStartStation.nodeName
+                                                    val endName = identifiedEndStation.nodeName
 
-                                                    val forwardStops = if (endOrder >= startOrder) endOrder - startOrder else (totalStops - startOrder) + endOrder
-                                                    val backwardStops = if (startOrder >= endOrder) startOrder - endOrder else (totalStops - endOrder) + startOrder
+// 2. 출발/도착 후보 모두 구하기 (nodeName=정류장 이름이 같을 수 있으니 전부 찾음)
+                                                    val startCandidates = stations.withIndex().filter { it.value.nodeName == startName }
+                                                    val endCandidates = stations.withIndex().filter { it.value.nodeName == endName }
 
-                                                    val stationCount = minOf(forwardStops, backwardStops)
-                                                    val busTravelTimeMin = stationCount * 2
+                                                    var minStationCount = Int.MAX_VALUE
 
-                                                    Log.d("디버그", "[startOrder]=$startOrder, [endOrder]=$endOrder, [totalStops]=$totalStops")
-                                                    Log.d("디버그", "[forwardStops]=$forwardStops, [backwardStops]=$backwardStops, [stationCount]=$stationCount")
+// 3. 모든 조합에서 최단 거리 찾기 (항상 양수)
+                                                    for (start in startCandidates) {
+                                                        for (end in endCandidates) {
+                                                            val startIdx = start.index
+                                                            val endIdx = end.index
+                                                            val total = stations.size
+
+                                                            val diff = kotlin.math.abs(endIdx - startIdx)   // ← abs() 사용!!
+                                                            val forward = diff
+                                                            val backward = total - diff
+                                                            val stationCount = minOf(forward, backward)
+
+                                                            if (stationCount < minStationCount) minStationCount = stationCount
+                                                        }
+                                                    }
+
+                                                    val busTravelTimeMin = minStationCount * 2  // 정류장 당 2분
+
+                                                    Log.d("디버그", "[최소 거리 조합] stationCount=$minStationCount, busTravelTimeMin=$busTravelTimeMin")
 
 
 
@@ -247,10 +265,11 @@ class RouteListActivity : AppCompatActivity() {
                                                         RouteSegment(
                                                             type = busTypeDisplay,
                                                             summary = "$busTypeDisplay | ${stations[startIdx].nodeName} 승차",
-                                                            detail = "$busNumber | ${busTravelTimeMin}분 (${stationCount}정류장)",
+                                                            detail = "$busNumber | ${busTravelTimeMin}분 (${minStationCount}정류장)",   // ★★★ 이 부분! ★★★
                                                             color = busColor
                                                         )
                                                     )
+
                                                     segmentsList.add(
                                                         RouteSegment(
                                                             type = "하차",

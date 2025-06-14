@@ -1,6 +1,7 @@
 package com.example.busmaker.data.model
 
 import android.graphics.Color // Color 사용을 위해 import
+import kotlin.math.abs
 
 data class RouteInformation(
     val label: String = "추천 경로",
