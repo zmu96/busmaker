@@ -1,12 +1,14 @@
 package com.example.busmaker
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import com.naver.maps.geometry.LatLng
+import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.*
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.PathOverlay
-import com.naver.maps.geometry.LatLngBounds
 
 class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -25,6 +27,14 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
         startLatLng = LatLng(startLat, startLng)
         endLatLng = LatLng(endLat, endLng)
+
+        // ★ 길찾기 버튼 연결
+        val btnSearchRoute = findViewById<ImageButton>(R.id.btnSearchRoute)
+        btnSearchRoute.setOnClickListener {
+            // SearchActivity로 이동
+            val intent = Intent(this, SearchActivity::class.java)
+            startActivity(intent)
+        }
 
         // XML에서 추가한 fragment에서 getMapAsync만 호출
         val mapFragment = supportFragmentManager.findFragmentById(R.id.naver_map_fragment) as MapFragment?

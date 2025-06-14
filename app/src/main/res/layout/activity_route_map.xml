@@ -9,4 +9,16 @@
         android:name="com.naver.maps.map.MapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <!-- 길찾기(검색) 버튼 추가 -->
+    <ImageButton
+        android:id="@+id/btnSearchRoute"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="24dp"
+       android:background="?attr/selectableItemBackgroundBorderless"
+    android:src="@drawable/ic_search_route"
+    android:contentDescription="@string/search_route" />
 </FrameLayout>
+

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Busmaker</string>
+    <string name="search_route">길찾기</string>
+
 </resources>
