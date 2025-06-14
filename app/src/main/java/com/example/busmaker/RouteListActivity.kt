@@ -137,6 +137,14 @@ class RouteListActivity : AppCompatActivity() {
                                                     it.cityCode?.toIntOrNull() == cityCode && routeNodeIdList.contains(it.nodeId)
                                                 }
 
+
+                                                // ① === 여기에 로그 찍기 ===
+                                                Log.d("디버그", "[matchedStart] nodeId=${matchedStart?.nodeId} / cityCode=${matchedStart?.cityCode}")
+                                                Log.d("디버그", "[matchedEnd] nodeId=${matchedEnd?.nodeId} / cityCode=${matchedEnd?.cityCode}")
+                                                Log.d("디버그", "[stations.size] = ${stations.size}, nodeIds = ${stations.map { it.nodeId }}")
+
+
+
                                                 val startIdx = if (matchedStart != null)
                                                     stations.indexOfFirst { it.nodeId == matchedStart.nodeId }
                                                 else -1
@@ -147,8 +155,17 @@ class RouteListActivity : AppCompatActivity() {
                                                 val endStationId = if (endIdx != -1) stations[endIdx].nodeId else null
                                                 val endStationName = if (endIdx != -1) stations[endIdx].nodeName else null
 
+
+                                                // ② === 그리고 여기에도 찍기 ===
+                                                Log.d("디버그", "[startIdx] = $startIdx, [endIdx] = $endIdx")
+                                                val stationCount = endIdx - startIdx
+                                                Log.d("디버그", "[stationCount] = $stationCount")
+
+
+
+
                                                 // ★★ 직통 경로 조건: 출발정류장 인덱스 < 도착정류장 인덱스
-                                                if (startIdx != -1 && endIdx != -1 && startIdx < endIdx && endStationId != null && endStationName != null) {
+                                                if (startIdx != -1 && endIdx != -1 && startIdx != endIdx && endStationId != null && endStationName != null) {
                                                     val identifiedStartStation = stations[startIdx]
                                                     val identifiedEndStation = stations[endIdx]
 
@@ -165,9 +182,21 @@ class RouteListActivity : AppCompatActivity() {
                                                             )
                                                         else 0
 
-                                                    // 2. 버스 이동 시간 (기존: 정류장 당 2분)
-                                                    val stationCount = endIdx - startIdx
+                                                    // 2. 버스 이동 시간 (정류장 당 2분, nodeOrder 사용)
+                                                    val startOrder = identifiedStartStation.nodeOrder ?: 0
+                                                    val endOrder = identifiedEndStation.nodeOrder ?: 0
+                                                    val totalStops = stations.maxOfOrNull { it.nodeOrder ?: 0 } ?: 0
+
+                                                    val forwardStops = if (endOrder >= startOrder) endOrder - startOrder else (totalStops - startOrder) + endOrder
+                                                    val backwardStops = if (startOrder >= endOrder) startOrder - endOrder else (totalStops - endOrder) + startOrder
+
+                                                    val stationCount = minOf(forwardStops, backwardStops)
                                                     val busTravelTimeMin = stationCount * 2
+
+                                                    Log.d("디버그", "[startOrder]=$startOrder, [endOrder]=$endOrder, [totalStops]=$totalStops")
+                                                    Log.d("디버그", "[forwardStops]=$forwardStops, [backwardStops]=$backwardStops, [stationCount]=$stationCount")
+
+
 
                                                     // 3. 실제 하차 정류장 → 도착지 도보 시간
                                                     val (endBusStopLat, endBusStopLng) = findLatLngByNodeId(
@@ -252,6 +281,7 @@ class RouteListActivity : AppCompatActivity() {
                                                         )
                                                     )
                                                 }
+
                                             }
                                         }
                                     }
