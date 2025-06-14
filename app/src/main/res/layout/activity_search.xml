@@ -28,4 +28,49 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"/>
+
+    <!-- 최근 출발지 기록 버튼 영역 -->
+    <TextView
+        android:text="최근 출발지"
+        android:textStyle="bold"
+        android:layout_marginTop="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fillViewport="true"
+        android:scrollbars="horizontal">
+
+        <LinearLayout
+            android:id="@+id/recentStartContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="start" />
+    </HorizontalScrollView>
+
+    <!-- 최근 도착지 기록 버튼 영역 -->
+    <TextView
+        android:text="최근 도착지"
+        android:textStyle="bold"
+        android:layout_marginTop="20dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fillViewport="true"
+        android:scrollbars="horizontal">
+
+        <LinearLayout
+            android:id="@+id/recentEndContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="start" />
+    </HorizontalScrollView>
+
 </LinearLayout>
