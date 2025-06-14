@@ -1,32 +1,40 @@
-package com.example.busmaker.data.api // 패키지 선언이 맞는지 확인하세요.
+package com.example.busmaker.data.api // 패키지 선언
 
+// 필요한 import 문들
+import com.example.busmaker.data.model.RouteItemsContainer // ★★★ RouteItemsContainer 모델 import 추가 ★★★
+import com.example.busmaker.data.model.StationItemsContainer
+import com.google.gson.GsonBuilder // ★★★ GsonBuilder import 추가 ★★★
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor // HttpLoggingInterceptor import 확인
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import kotlin.reflect.KProperty // KProperty import 추가 (lazy delegate 오류 관련)
 
 object BusApiClient {
     private const val BASE_URL = "http://apis.data.go.kr/1613000/"
 
-    // HttpLoggingInterceptor 설정
-    // Interceptor는 OkHttp의 인터페이스이므로 HttpLoggingInterceptor 인스턴스를 직접 사용합니다.
     private val loggingInterceptor: HttpLoggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    // OkHttpClient에 인터셉터 추가
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(loggingInterceptor) // 여기서 loggingInterceptor 인스턴스를 직접 전달
+        .addInterceptor(loggingInterceptor)
         .build()
 
-    // lazy 델리게이트의 getValue 시그니처 문제를 해결하기 위해 명시적 타입 지정 또는 컨텍스트 확인
-    // 보통은 아래와 같이 BusApiService 타입을 명시해주면 해결됩니다.
+    // BusApiService 인터페이스는 같은 패키지 내에 있다고 가정
+    // RouteItemsContainerDeserializer 클래스도 같은 패키지 내에 있다고 가정
+
     val service: BusApiService by lazy {
+        // ★★★ 커스텀 Deserializer를 포함한 Gson 인스턴스 생성 ★★★
+        val gson = GsonBuilder()
+            .registerTypeAdapter(RouteItemsContainer::class.java, RouteItemsContainerDeserializer())
+            .registerTypeAdapter(StationItemsContainer::class.java, StationItemsDeserializer()) // ★★★ 이 줄 추가 ★★★
+            .create()
+
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(httpClient) // 커스텀 OkHttpClient 사용
-            .addConverterFactory(GsonConverterFactory.create())
+            // ★★★ 수정된 Gson 인스턴스를 사용하여 ConverterFactory 생성 ★★★
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(BusApiService::class.java)
     }

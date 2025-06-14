@@ -8,7 +8,6 @@ import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.PathOverlay
 import com.naver.maps.geometry.LatLngBounds
 
-
 class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var startLatLng: LatLng
@@ -27,28 +26,27 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
         startLatLng = LatLng(startLat, startLng)
         endLatLng = LatLng(endLat, endLng)
 
+        // XML에서 추가한 fragment에서 getMapAsync만 호출
         val mapFragment = supportFragmentManager.findFragmentById(R.id.naver_map_fragment) as MapFragment?
-            ?: MapFragment.newInstance().also {
-                supportFragmentManager.beginTransaction().add(R.id.map_container, it).commit()
-            }
-        mapFragment.getMapAsync(this)
+        mapFragment?.getMapAsync(this)
     }
 
     override fun onMapReady(naverMap: NaverMap) {
-        // 마커 추가
+        // 출발지 마커
         Marker().apply {
             position = startLatLng
             captionText = "출발지"
             map = naverMap
         }
 
+        // 도착지 마커
         Marker().apply {
             position = endLatLng
             captionText = "도착지"
             map = naverMap
         }
 
-        // 경로 선
+        // 출발지~도착지 경로선
         PathOverlay().apply {
             coords = listOf(startLatLng, endLatLng)
             map = naverMap

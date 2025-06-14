@@ -14,18 +14,12 @@ import com.example.busmaker.data.model.RouteInformation
 import com.example.busmaker.data.model.StationItemDetail
 import com.example.busmaker.data.model.RouteItemDetail
 import com.example.busmaker.data.model.RouteStationItemDetail
+import com.example.busmaker.data.model.RouteSegment
 import kotlinx.coroutines.launch
 
 class RouteListActivity : AppCompatActivity() {
 
-    // RouteListActivity.kt
-// ...
-// 일반 인증키 (Decoding) 값을 사용합니다.
     private val serviceKey = "VIyokumz54z0pgrPhQPYtDCSTJjSgC9K0yTZPT8O3T7IAvHghfXxcof7hZT7RYiG77D83lUKqeciZMuaXYfKRg=="
-    // ...
-
-
-    // RecyclerView 어댑터를 멤버 변수로 선언하여 나중에 업데이트할 수 있도록 합니다.
     private lateinit var routeListAdapter: RouteListAdapter
     private val routeInfoList = mutableListOf<RouteInformation>()
 
@@ -38,20 +32,17 @@ class RouteListActivity : AppCompatActivity() {
         val endLat = intent.getDoubleExtra("endLat", 0.0)
         val endLng = intent.getDoubleExtra("endLng", 0.0)
 
-        Log.d("RouteListActivity", "Received Coordinates - Start: ($startLat, $startLng), End: ($endLat, $endLng)") // 로그 추가
+        Log.d("RouteListActivity", "Received Coordinates - Start: ($startLat, $startLng), End: ($endLat, $endLng)")
 
-        val rv = findViewById<RecyclerView>(R.id.rv_routes)
+        val rv = findViewById<RecyclerView>(R.id.rvRouteList)
         rv.layoutManager = LinearLayoutManager(this)
-        // 어댑터 초기화 (빈 리스트로 시작)
         routeListAdapter = RouteListAdapter(routeInfoList) { info ->
-            // 경로 클릭 시 RouteMapActivity 이동
             val intent = Intent(this@RouteListActivity, RouteMapActivity::class.java).apply {
                 putExtra("startLat", startLat)
                 putExtra("startLng", startLng)
                 putExtra("endLat", endLat)
                 putExtra("endLng", endLng)
-                // 필요하다면 선택된 경로 정보(info)도 전달할 수 있습니다.
-                // 예: putExtra("ROUTE_SUMMARY", info.summary)
+                // 필요하다면 info 객체도 추가
             }
             startActivity(intent)
         }
@@ -63,13 +54,13 @@ class RouteListActivity : AppCompatActivity() {
     private fun findNearbyStationsAndRoutes(startLat: Double, startLng: Double, endLat: Double, endLng: Double) {
         lifecycleScope.launch {
             try {
-                // 1. 출발지 근처 정류소 조회
+                // 1. 출발지 근처 정류소 여러 개 조회
                 val startStationApiResponse = BusApiClient.service.getNearbyStations(
                     serviceKey = serviceKey,
                     latitude = startLat,
                     longitude = startLng
                 )
-                // 2. 도착지 근처 정류소 조회
+                // 2. 도착지 근처 정류소 여러 개 조회
                 val endStationApiResponse = BusApiClient.service.getNearbyStations(
                     serviceKey = serviceKey,
                     latitude = endLat,
@@ -80,114 +71,153 @@ class RouteListActivity : AppCompatActivity() {
                     val startActualResponse = startStationApiResponse.body()
                     val endActualResponse = endStationApiResponse.body()
 
-                    // 실제 데이터 모델 구조에 맞춰 접근 (StationItemDetail의 리스트를 가져온다고 가정)
-                    // ?. 연산자는 null 안전 호출을 위해 중요
-                    val startStation: StationItemDetail? = startActualResponse?.responseData?.body?.itemsContainer?.stationList?.firstOrNull()
-                    val endStation: StationItemDetail? = endActualResponse?.responseData?.body?.itemsContainer?.stationList?.firstOrNull()
+                    val startStations: List<StationItemDetail> =
+                        startActualResponse?.responseData?.body?.itemsContainer?.stationList?.take(3) ?: emptyList()
+                    val endStations: List<StationItemDetail> =
+                        endActualResponse?.responseData?.body?.itemsContainer?.stationList?.take(3) ?: emptyList()
+                    Log.d("RouteListActivity", "startStations: $startStations")
+                    Log.d("RouteListActivity", "endStations: $endStations")
 
-                    if (startStation?.nodeId != null && startStation.nodeName != null &&
-                        endStation?.nodeId != null && endStation.nodeName != null) {
+                    val newRouteInfoList = mutableListOf<RouteInformation>()
 
-                        val startStationId = startStation.nodeId
-                        val endStationId = endStation.nodeId
+                    // 출발지 근처 정류소별로 노선 탐색 (★cityCode, nodeId를 각각 적용!)
+                    for (startStation in startStations) {
+                        val cityCodeStr = startStation.cityCode
+                        val cityCode = cityCodeStr?.toIntOrNull() ?: continue   // null이거나 Int 변환 실패 시 skip!
+                        val startStationId = startStation.nodeId ?: continue
+                        val startStationName = startStation.nodeName ?: continue
 
-                        Log.d("출발정류소", "${startStation.nodeName} (${startStationId})")
-                        Log.d("도착정류소", "${endStation.nodeName} (${endStationId})")
+                        Log.d("출발정류소", "$startStationName ($startStationId, $cityCode)")
 
-                        val cityCode = 25 // 도시 코드는 필요에 따라 동적으로 변경
-
-                        // 3. 출발 정류소 경유 노선 조회
+                        // 1. 출발 정류소의 경유 노선 목록 조회
                         val startRoutesApiResponse = BusApiClient.service.getThroughRoutesByStation(
                             serviceKey = serviceKey,
                             cityCode = cityCode,
                             nodeId = startStationId
                         )
-                        // 4. 도착 정류소 경유 노선 조회
-                        val endRoutesApiResponse = BusApiClient.service.getThroughRoutesByStation(
-                            serviceKey = serviceKey,
-                            cityCode = cityCode,
-                            nodeId = endStationId
-                        )
 
-                        if (startRoutesApiResponse.isSuccessful && endRoutesApiResponse.isSuccessful) {
+                        if (startRoutesApiResponse.isSuccessful) {
                             val startRoutesActualResponse = startRoutesApiResponse.body()
-                            val endRoutesActualResponse = endRoutesApiResponse.body()
+                            val startRouteItems: List<RouteItemDetail>? =
+                                startRoutesActualResponse?.responseData?.body?.itemsContainer?.routeList
 
-                            // RouteItemDetail의 리스트를 가져온다고 가정
-                            val startRouteItems: List<RouteItemDetail>? = startRoutesActualResponse?.responseData?.body?.itemsContainer?.routeList
-                            val endRouteItems: List<RouteItemDetail>? = endRoutesActualResponse?.responseData?.body?.itemsContainer?.routeList
+                            if (startRouteItems != null) {
+                                for (route in startRouteItems) {
+                                    val routeId = route.routeId
+                                    val busNumber = route.routeNo
+                                    val routeType = route.routeType
 
-                            if (startRouteItems != null && endRouteItems != null) {
-                                val commonRoutes = startRouteItems.filter { startRoute ->
-                                    endRouteItems.any { endRoute ->
-                                        endRoute.routeId == startRoute.routeId && startRoute.routeId != null
-                                    }
-                                }
+                                    if (routeId != null && busNumber != null) {
+                                        val stationsOnRouteApiResponse = BusApiClient.service.getStationsByRouteId(
+                                            serviceKey = serviceKey,
+                                            cityCode = cityCode, // ★동적으로!
+                                            routeId = routeId
+                                        )
 
-                                val newRouteInfoList = mutableListOf<RouteInformation>()
+                                        if (stationsOnRouteApiResponse.isSuccessful) {
+                                            val stationsOnRouteActualResponse = stationsOnRouteApiResponse.body()
+                                            val stations: List<RouteStationItemDetail>? =
+                                                stationsOnRouteActualResponse?.responseData?.body?.itemsContainer?.stationList
 
-                                if (commonRoutes.isNotEmpty()) {
-                                    for (commonRoute in commonRoutes) {
-                                        val routeId = commonRoute.routeId
-                                        val busNumber = commonRoute.routeNo // 또는 routeName 등 실제 속성명
+                                            if (stations != null) {
+                                                // ★ 출발 후보 중 실제 노선에 포함된 nodeId (cityCode까지 일치하는 경우만!)
+                                                val routeNodeIdList = stations.mapNotNull { it.nodeId }
 
-                                        if (routeId != null && busNumber != null) {
-                                            // 5. 공통 노선의 정류소 목록 조회
-                                            val stationsOnRouteApiResponse = BusApiClient.service.getStationsByRouteId(
-                                                serviceKey = serviceKey,
-                                                cityCode = cityCode,
-                                                routeId = routeId
-                                            )
+                                                val matchedStart = startStations.firstOrNull {
+                                                    it.cityCode?.toIntOrNull() == cityCode && routeNodeIdList.contains(it.nodeId)
+                                                }
+                                                val matchedEnd = endStations.firstOrNull {
+                                                    it.cityCode?.toIntOrNull() == cityCode && routeNodeIdList.contains(it.nodeId)
+                                                }
 
-                                            if (stationsOnRouteApiResponse.isSuccessful) {
-                                                val stationsOnRouteActualResponse = stationsOnRouteApiResponse.body()
-                                                // RouteStationItemDetail의 리스트를 가져온다고 가정
-                                                val stations: List<RouteStationItemDetail>? = stationsOnRouteActualResponse?.responseData?.body?.itemsContainer?.stationList
 
-                                                if (stations != null) {
-                                                    val startIdx = stations.indexOfFirst { it.nodeId == startStationId }
-                                                    val endIdx = stations.indexOfFirst { it.nodeId == endStationId }
+                                                val startIdx = if (matchedStart != null)
+                                                    stations.indexOfFirst { it.nodeId == matchedStart.nodeId }
+                                                else -1
+                                                val endIdx = if (matchedEnd != null)
+                                                    stations.indexOfFirst { it.nodeId == matchedEnd.nodeId }
+                                                else -1
 
-                                                    // 출발지가 도착지보다 먼저 등장해야 정상 구간!
-                                                    if (startIdx != -1 && endIdx != -1 && startIdx < endIdx) {
-                                                        val stationCount = endIdx - startIdx
-                                                        val totalTime = stationCount * 2 // 정류장당 2분(임시)
-                                                        val transferCount = 0 // 환승 미구현(단일 노선만)
-                                                        val summary = "버스 $busNumber (${stations[startIdx].nodeName} → ${stations[endIdx].nodeName})"
+                                                val endStationId = if (endIdx != -1) stations[endIdx].nodeId else null
+                                                val endStationName = if (endIdx != -1) stations[endIdx].nodeName else null
 
-                                                        newRouteInfoList.add(
-                                                            RouteInformation(
-                                                                totalTime,
-                                                                transferCount,
-                                                                summary
-                                                            )
-                                                        )
+                                                Log.d("경로탐색", "routeId=$routeId ($busNumber), 정류장 수=${stations.size}")
+                                                Log.d("경로탐색", "startIdx=$startIdx, endIdx=$endIdx")
+                                                if (startIdx != -1) {
+                                                    Log.d("경로탐색", "startStation=${stations[startIdx]}")
+                                                }
+                                                if (endIdx != -1) {
+                                                    Log.d("경로탐색", "endStation=${stations[endIdx]}")
+                                                }
+
+                                                // 순서상 출발정류장이 먼저 등장해야 함
+                                                if (startIdx != -1 && endIdx != -1 && startIdx < endIdx && endStationId != null && endStationName != null) {
+                                                    val stationCount = endIdx - startIdx
+                                                    val totalMinutes = stationCount * 2
+                                                    val hours = totalMinutes / 60
+                                                    val minutes = totalMinutes % 60
+                                                    val totalTimeStr = if (hours > 0) "${hours}시간 ${minutes}분" else "${minutes}분"
+
+                                                    val busTypeDisplay = when (routeType?.trim()) {
+                                                        "일반버스", "간선버스", "지선버스", "마을버스", "일반", "간선" -> "일반"
+                                                        "좌석버스", "직행좌석버스", "급행버스", "광역급행버스", "직행", "좌석" -> "직행"
+                                                        else -> routeType ?: "버스"
                                                     }
+                                                    val busColor = when (busTypeDisplay) {
+                                                        "일반" -> android.graphics.Color.parseColor("#4CAF50")
+                                                        "직행" -> android.graphics.Color.parseColor("#F44336")
+                                                        else -> android.graphics.Color.parseColor("#2196F3")
+                                                    }
+
+                                                    val label = if (newRouteInfoList.isEmpty()) "추천 경로" else "경로 ${newRouteInfoList.size + 1}"
+
+                                                    // segment(구간) 정보 추가
+                                                    val segmentsList = mutableListOf<RouteSegment>()
+                                                    segmentsList.add(
+                                                        RouteSegment(
+                                                            type = busTypeDisplay,
+                                                            summary = "$busTypeDisplay | ${stations[startIdx].nodeName} 승차",
+                                                            detail = "$busNumber | ${totalMinutes}분 (${stationCount}정류장)",
+                                                            color = busColor
+                                                        )
+                                                    )
+                                                    segmentsList.add(
+                                                        RouteSegment(
+                                                            type = "하차",
+                                                            summary = "$endStationName 하차",
+                                                            detail = "",
+                                                            color = android.graphics.Color.parseColor("#BBBBBB")
+                                                        )
+                                                    )
+
+                                                    val timeRangeAndFareStr = "버스 $busNumber (${stations[startIdx].nodeName} → $endStationName) | 요금 정보 없음"
+
+                                                    newRouteInfoList.add(
+                                                        RouteInformation(
+                                                            label = label,
+                                                            totalTime = totalTimeStr,
+                                                            timeRangeAndFare = timeRangeAndFareStr,
+                                                            segments = segmentsList,
+                                                            pinFixed = false
+                                                        )
+                                                    )
                                                 }
                                             }
                                         }
                                     }
-
-                                    // 기존 리스트를 갱신하고 어댑터에 반영
-                                    runOnUiThread {
-                                        routeInfoList.clear()
-                                        routeInfoList.addAll(newRouteInfoList)
-                                        routeListAdapter.notifyDataSetChanged()
-
-                                        if (newRouteInfoList.isEmpty()) {
-                                            Toast.makeText(this@RouteListActivity, "두 정류소를 모두 지나는 노선이 없습니다.", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } else {
-                                    runOnUiThread {
-                                        Toast.makeText(this@RouteListActivity, "두 정류소를 모두 지나는 노선이 없습니다.", Toast.LENGTH_SHORT).show()
-                                    }
                                 }
                             }
                         }
-                    } else {
-                        runOnUiThread {
-                            Toast.makeText(this@RouteListActivity, "정류소 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
+
+                    runOnUiThread {
+                        Log.d("RouteListActivity", "UI 업데이트 전 newRouteInfoList 크기: ${newRouteInfoList.size}")
+                        routeInfoList.clear()
+                        routeInfoList.addAll(newRouteInfoList.distinctBy { it.timeRangeAndFare })
+                        routeListAdapter.notifyDataSetChanged()
+
+                        if (routeInfoList.isEmpty()) {
+                            Toast.makeText(this@RouteListActivity, "두 정류소를 모두 지나는 노선이 없습니다.", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -199,4 +229,6 @@ class RouteListActivity : AppCompatActivity() {
             }
         }
     }
+
+
 }

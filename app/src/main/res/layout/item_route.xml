@@ -1,31 +1,135 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    android:elevation="4dp"
-    android:padding="12dp">
+    android:layout_margin="12dp"
+    app:cardElevation="4dp"
+    app:cardCornerRadius="12dp">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 제목 + 소요 시간 + 고정 핀 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="고정한 경로"
+                android:textStyle="bold"
+                android:textColor="#1976D2"
+                android:textSize="14sp" />
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/tvTotalTime"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="2시간 21분"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#000000" />
+
+            <ImageView
+                android:id="@+id/ivPin"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@android:drawable/btn_star_big_on"
+                app:tint="#2196F3" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/tv_route_summary"
-            android:text="버스 720 → 302"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-        <TextView
-            android:id="@+id/tv_route_info"
-            android:text="소요 시간: 35분 / 환승 1회"
-            android:textSize="14sp"
+            android:id="@+id/tvTimeRangeAndFare"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"/>
-    </LinearLayout>
+            android:text="오후 4:09 - 오후 6:30 | 3,500원"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_marginTop="4dp" />
 
+        <LinearLayout
+            android:id="@+id/transportBar"
+            android:layout_width="match_parent"
+            android:layout_height="12dp"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="#BBBBBB" /> <!-- 도보 -->
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="3"
+                android:background="#4CAF50" /> <!-- 일반 버스 -->
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="3"
+                android:background="#F44336" /> <!-- 직행 버스 -->
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvSegment1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="일반  | 범화터널입구, 물푸레마을"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/tvSegment2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="390번 | 1분 (1정류장) [여유]"
+            android:textSize="14sp"
+            android:textColor="#4CAF50"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tvSegment3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="직행 | 판교역, 낙생육교, 현대백화점"
+            android:textSize="14sp"
+            android:textColor="#F44336"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tvSegment4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="하차 | 평택대학교"
+            android:textSize="14sp"
+            android:textColor="#000000"
+            android:layout_marginTop="4dp" />
+
+        <Button
+            android:id="@+id/btnStartNavigation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="바로 안내시작"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#1976D2"
+            android:textColor="#FFFFFF" />
+
+    </LinearLayout>
 </androidx.cardview.widget.CardView>

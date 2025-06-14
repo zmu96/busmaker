@@ -19,7 +19,7 @@
         tools:targetApi="31">
 
         <meta-data
-            android:name="com.naver.maps.map.CLIENT_ID"
+            android:name="com.naver.maps.map.NCP_KEY_ID"
             android:value="fqlpi3iqcm" />
 
         <activity

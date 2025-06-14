@@ -16,8 +16,8 @@
 
     <!-- 경로 리스트 -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_routes"
+        android:id="@+id/rvRouteList"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#FFFFFF"/>
+        android:padding="8dp" />
 </LinearLayout>
