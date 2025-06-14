@@ -15,6 +15,7 @@ import com.example.busmaker.data.model.StationItemDetail
 import com.example.busmaker.data.model.RouteItemDetail
 import com.example.busmaker.data.model.RouteStationItemDetail
 import com.example.busmaker.data.model.RouteSegment
+import com.example.busmaker.utils.WalkingTimeEstimator
 import kotlinx.coroutines.launch
 
 class RouteListActivity : AppCompatActivity() {
@@ -51,45 +52,53 @@ class RouteListActivity : AppCompatActivity() {
         findNearbyStationsAndRoutes(startLat, startLng, endLat, endLng)
     }
 
-    private fun findNearbyStationsAndRoutes(startLat: Double, startLng: Double, endLat: Double, endLng: Double) {
+    private fun findNearbyStationsAndRoutes(
+        userStartLat: Double, // 출발지 위도
+        userStartLng: Double, // 출발지 경도
+        userEndLat: Double,   // 도착지 위도
+        userEndLng: Double    // 도착지 경도
+    ) {
         lifecycleScope.launch {
             try {
-                // 1. 출발지 근처 정류소 여러 개 조회
+                // 1. 출발지·도착지 근처 정류소 여러 개 조회
                 val startStationApiResponse = BusApiClient.service.getNearbyStations(
                     serviceKey = serviceKey,
-                    latitude = startLat,
-                    longitude = startLng
+                    latitude = userStartLat,
+                    longitude = userStartLng
                 )
-                // 2. 도착지 근처 정류소 여러 개 조회
                 val endStationApiResponse = BusApiClient.service.getNearbyStations(
                     serviceKey = serviceKey,
-                    latitude = endLat,
-                    longitude = endLng
+                    latitude = userEndLat,
+                    longitude = userEndLng
                 )
 
                 if (startStationApiResponse.isSuccessful && endStationApiResponse.isSuccessful) {
                     val startActualResponse = startStationApiResponse.body()
                     val endActualResponse = endStationApiResponse.body()
 
-                    val startStations: List<StationItemDetail> =
+                    // 주변 정류소(최대 3개)
+                    val startCandidateStations: List<StationItemDetail> =
                         startActualResponse?.responseData?.body?.itemsContainer?.stationList?.take(3) ?: emptyList()
-                    val endStations: List<StationItemDetail> =
+                    val endCandidateStations: List<StationItemDetail> =
                         endActualResponse?.responseData?.body?.itemsContainer?.stationList?.take(3) ?: emptyList()
-                    Log.d("RouteListActivity", "startStations: $startStations")
-                    Log.d("RouteListActivity", "endStations: $endStations")
 
                     val newRouteInfoList = mutableListOf<RouteInformation>()
 
-                    // 출발지 근처 정류소별로 노선 탐색 (★cityCode, nodeId를 각각 적용!)
-                    for (startStation in startStations) {
-                        val cityCodeStr = startStation.cityCode
-                        val cityCode = cityCodeStr?.toIntOrNull() ?: continue   // null이거나 Int 변환 실패 시 skip!
-                        val startStationId = startStation.nodeId ?: continue
-                        val startStationName = startStation.nodeName ?: continue
+                    // nodeId로 StationItemDetail에서 좌표 찾는 함수
+                    fun findLatLngByNodeId(nodeId: String?, candidates: List<StationItemDetail>): Pair<Double?, Double?> {
+                        val station = candidates.firstOrNull { it.nodeId == nodeId }
+                        val lat = station?.gpsLati
+                        val lng = station?.gpsLong
+                        return lat to lng
+                    }
 
-                        Log.d("출발정류소", "$startStationName ($startStationId, $cityCode)")
+                    // 출발지 근처 정류소별로 노선 탐색
+                    for (actualStartBusStop in startCandidateStations) {
+                        val cityCodeStr = actualStartBusStop.cityCode
+                        val cityCode = cityCodeStr?.toIntOrNull() ?: continue
+                        val startStationId = actualStartBusStop.nodeId ?: continue
 
-                        // 1. 출발 정류소의 경유 노선 목록 조회
+                        // 1. 해당 정류소를 경유하는 노선 조회
                         val startRoutesApiResponse = BusApiClient.service.getThroughRoutesByStation(
                             serviceKey = serviceKey,
                             cityCode = cityCode,
@@ -110,7 +119,7 @@ class RouteListActivity : AppCompatActivity() {
                                     if (routeId != null && busNumber != null) {
                                         val stationsOnRouteApiResponse = BusApiClient.service.getStationsByRouteId(
                                             serviceKey = serviceKey,
-                                            cityCode = cityCode, // ★동적으로!
+                                            cityCode = cityCode,
                                             routeId = routeId
                                         )
 
@@ -120,16 +129,13 @@ class RouteListActivity : AppCompatActivity() {
                                                 stationsOnRouteActualResponse?.responseData?.body?.itemsContainer?.stationList
 
                                             if (stations != null) {
-                                                // ★ 출발 후보 중 실제 노선에 포함된 nodeId (cityCode까지 일치하는 경우만!)
                                                 val routeNodeIdList = stations.mapNotNull { it.nodeId }
-
-                                                val matchedStart = startStations.firstOrNull {
+                                                val matchedStart = startCandidateStations.firstOrNull {
                                                     it.cityCode?.toIntOrNull() == cityCode && routeNodeIdList.contains(it.nodeId)
                                                 }
-                                                val matchedEnd = endStations.firstOrNull {
+                                                val matchedEnd = endCandidateStations.firstOrNull {
                                                     it.cityCode?.toIntOrNull() == cityCode && routeNodeIdList.contains(it.nodeId)
                                                 }
-
 
                                                 val startIdx = if (matchedStart != null)
                                                     stations.indexOfFirst { it.nodeId == matchedStart.nodeId }
@@ -141,23 +147,52 @@ class RouteListActivity : AppCompatActivity() {
                                                 val endStationId = if (endIdx != -1) stations[endIdx].nodeId else null
                                                 val endStationName = if (endIdx != -1) stations[endIdx].nodeName else null
 
-                                                Log.d("경로탐색", "routeId=$routeId ($busNumber), 정류장 수=${stations.size}")
-                                                Log.d("경로탐색", "startIdx=$startIdx, endIdx=$endIdx")
-                                                if (startIdx != -1) {
-                                                    Log.d("경로탐색", "startStation=${stations[startIdx]}")
-                                                }
-                                                if (endIdx != -1) {
-                                                    Log.d("경로탐색", "endStation=${stations[endIdx]}")
-                                                }
-
-                                                // 순서상 출발정류장이 먼저 등장해야 함
+                                                // ★★ 직통 경로 조건: 출발정류장 인덱스 < 도착정류장 인덱스
                                                 if (startIdx != -1 && endIdx != -1 && startIdx < endIdx && endStationId != null && endStationName != null) {
-                                                    val stationCount = endIdx - startIdx
-                                                    val totalMinutes = stationCount * 2
-                                                    val hours = totalMinutes / 60
-                                                    val minutes = totalMinutes % 60
-                                                    val totalTimeStr = if (hours > 0) "${hours}시간 ${minutes}분" else "${minutes}분"
+                                                    val identifiedStartStation = stations[startIdx]
+                                                    val identifiedEndStation = stations[endIdx]
 
+                                                    // 1. 출발지 → 실제 탑승 정류장 도보 시간
+                                                    val (startBusStopLat, startBusStopLng) = findLatLngByNodeId(
+                                                        identifiedStartStation.nodeId,
+                                                        startCandidateStations
+                                                    )
+                                                    val walkTimeToStartStopMin =
+                                                        if (startBusStopLat != null && startBusStopLng != null)
+                                                            WalkingTimeEstimator.estimateWalkingTimeBetweenCoordinates(
+                                                                userStartLat, userStartLng,
+                                                                startBusStopLat, startBusStopLng
+                                                            )
+                                                        else 0
+
+                                                    // 2. 버스 이동 시간 (기존: 정류장 당 2분)
+                                                    val stationCount = endIdx - startIdx
+                                                    val busTravelTimeMin = stationCount * 2
+
+                                                    // 3. 실제 하차 정류장 → 도착지 도보 시간
+                                                    val (endBusStopLat, endBusStopLng) = findLatLngByNodeId(
+                                                        identifiedEndStation.nodeId,
+                                                        endCandidateStations
+                                                    )
+                                                    val walkTimeFromEndStopMin =
+                                                        if (endBusStopLat != null && endBusStopLng != null)
+                                                            WalkingTimeEstimator.estimateWalkingTimeBetweenCoordinates(
+                                                                endBusStopLat, endBusStopLng,
+                                                                userEndLat, userEndLng
+                                                            )
+                                                        else 0
+
+                                                    // 4. 전체 소요 시간 합산
+                                                    val numericTotalTimeMin = walkTimeToStartStopMin + busTravelTimeMin + walkTimeFromEndStopMin
+                                                    val totalHours = numericTotalTimeMin / 60
+                                                    val totalRemainderMinutes = numericTotalTimeMin % 60
+                                                    val totalTimeStrForDisplay = if (totalHours > 0) {
+                                                        "${totalHours}시간 ${totalRemainderMinutes}분"
+                                                    } else {
+                                                        "${totalRemainderMinutes}분"
+                                                    }
+
+                                                    // UI용 추가 정보 (기존 방식 그대로)
                                                     val busTypeDisplay = when (routeType?.trim()) {
                                                         "일반버스", "간선버스", "지선버스", "마을버스", "일반", "간선" -> "일반"
                                                         "좌석버스", "직행좌석버스", "급행버스", "광역급행버스", "직행", "좌석" -> "직행"
@@ -168,16 +203,22 @@ class RouteListActivity : AppCompatActivity() {
                                                         "직행" -> android.graphics.Color.parseColor("#F44336")
                                                         else -> android.graphics.Color.parseColor("#2196F3")
                                                     }
-
                                                     val label = if (newRouteInfoList.isEmpty()) "추천 경로" else "경로 ${newRouteInfoList.size + 1}"
 
-                                                    // segment(구간) 정보 추가
                                                     val segmentsList = mutableListOf<RouteSegment>()
+                                                    segmentsList.add(
+                                                        RouteSegment(
+                                                            type = "도보",
+                                                            summary = "출발지 → 승차 정류장 도보",
+                                                            detail = "${walkTimeToStartStopMin}분",
+                                                            color = android.graphics.Color.parseColor("#888888")
+                                                        )
+                                                    )
                                                     segmentsList.add(
                                                         RouteSegment(
                                                             type = busTypeDisplay,
                                                             summary = "$busTypeDisplay | ${stations[startIdx].nodeName} 승차",
-                                                            detail = "$busNumber | ${totalMinutes}분 (${stationCount}정류장)",
+                                                            detail = "$busNumber | ${busTravelTimeMin}분 (${stationCount}정류장)",
                                                             color = busColor
                                                         )
                                                     )
@@ -189,13 +230,22 @@ class RouteListActivity : AppCompatActivity() {
                                                             color = android.graphics.Color.parseColor("#BBBBBB")
                                                         )
                                                     )
+                                                    segmentsList.add(
+                                                        RouteSegment(
+                                                            type = "도보",
+                                                            summary = "하차 정류장 → 도착지 도보",
+                                                            detail = "${walkTimeFromEndStopMin}분",
+                                                            color = android.graphics.Color.parseColor("#888888")
+                                                        )
+                                                    )
 
-                                                    val timeRangeAndFareStr = "버스 $busNumber (${stations[startIdx].nodeName} → $endStationName) | 요금 정보 없음"
+                                                    val timeRangeAndFareStr =
+                                                        "버스 $busNumber (${stations[startIdx].nodeName} → $endStationName) | 요금 1450원"
 
                                                     newRouteInfoList.add(
                                                         RouteInformation(
                                                             label = label,
-                                                            totalTime = totalTimeStr,
+                                                            totalTime = totalTimeStrForDisplay,
                                                             timeRangeAndFare = timeRangeAndFareStr,
                                                             segments = segmentsList,
                                                             pinFixed = false
@@ -211,11 +261,9 @@ class RouteListActivity : AppCompatActivity() {
                     }
 
                     runOnUiThread {
-                        Log.d("RouteListActivity", "UI 업데이트 전 newRouteInfoList 크기: ${newRouteInfoList.size}")
                         routeInfoList.clear()
                         routeInfoList.addAll(newRouteInfoList.distinctBy { it.timeRangeAndFare })
                         routeListAdapter.notifyDataSetChanged()
-
                         if (routeInfoList.isEmpty()) {
                             Toast.makeText(this@RouteListActivity, "두 정류소를 모두 지나는 노선이 없습니다.", Toast.LENGTH_SHORT).show()
                         }
@@ -229,6 +277,7 @@ class RouteListActivity : AppCompatActivity() {
             }
         }
     }
+
 
 
 }
