@@ -1,9 +1,11 @@
 package com.example.busmaker.adapter
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.core.view.setPadding
 import androidx.recyclerview.widget.RecyclerView
 import com.example.busmaker.R
 import com.example.busmaker.data.model.RouteInformation
@@ -51,14 +53,53 @@ class RouteListAdapter(
         holder.tvSegment3.text = segments.getOrNull(2)?.summary ?: ""
         holder.tvSegment4.text = segments.getOrNull(3)?.summary ?: ""
 
-        // transportBar(구간 색상 표시, 동적으로 View 추가)
+        // ★★★ transportBar: 색상 바 + 구간 텍스트를 함께 표시 ★★★
         holder.transportBar.removeAllViews()
         segments.forEach { seg ->
-            val v = View(holder.transportBar.context)
-            val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
-            v.layoutParams = params
-            v.setBackgroundColor(seg.color)
-            holder.transportBar.addView(v)
+            // 1. 바+텍스트를 감싸는 LinearLayout(세로)
+            val barWithText = LinearLayout(holder.transportBar.context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+                gravity = android.view.Gravity.CENTER
+            }
+
+            // 2. 컬러 바 (상단)
+            val colorBar = View(holder.transportBar.context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    16 // 바 높이(px) - 필요시 dp 변환
+                )
+                setBackgroundColor(seg.color)
+            }
+            barWithText.addView(colorBar)
+
+            // 3. 구간 텍스트 (하단)
+            val labelText = when {
+                seg.type == "도보" -> "도보(${seg.detail})"
+                seg.type == "하차" -> "하차"
+                seg.type == "일반" || seg.type == "직행" || seg.type == "버스" -> {
+                    // "2분" 혹은 "8분" 등만 추출
+                    // seg.detail이 "68 | 2분 (1정류장)" 이런 식이면 시간만 뽑기
+                    // detail에서 "분" 앞 숫자만 추출
+                    val minuteRegex = Regex("(\\d+)분")
+                    val match = minuteRegex.find(seg.detail)
+                    val timeStr = match?.value ?: ""
+                    "버스($timeStr)"
+                }
+                else -> seg.type
+            }
+            val labelView = TextView(holder.transportBar.context).apply {
+                text = labelText
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f)
+                setTextColor(Color.DKGRAY)
+                gravity = android.view.Gravity.CENTER
+                setPadding(0, 4, 0, 0) // 위 여백
+                // 필요시 bold/배경 등 조정 가능
+            }
+            barWithText.addView(labelView)
+
+            // transportBar(가로) 안에 barWithText(세로)를 추가
+            holder.transportBar.addView(barWithText)
         }
 
         // 안내시작 버튼 클릭 리스너
