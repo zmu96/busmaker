@@ -50,20 +50,22 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
         naverMap.uiSettings.isLocationButtonEnabled = true
         naverMap.locationTrackingMode = LocationTrackingMode.Follow
 
-        // 출발지 마커
+        // 출발지(지도상의 출발 위치) 마커
         Marker().apply {
             position = startLatLng
             captionText = "출발지"
+            iconTintColor = android.graphics.Color.parseColor("#4CAF50")
             map = naverMap
         }
-        // 도착지 마커
+        // 도착지(지도상의 도착 위치) 마커
         Marker().apply {
             position = endLatLng
             captionText = "도착지"
+            iconTintColor = android.graphics.Color.parseColor("#4CAF50")
             map = naverMap
         }
 
-        // ★★ 중간 정류장 마커 추가 ★★
+        // ★★ 중간 정류장 마커 추가(연한 초록) ★★
         val midLatArr = intent.getDoubleArrayExtra("stationLatList")
         val midLngArr = intent.getDoubleArrayExtra("stationLngList")
         if (midLatArr != null && midLngArr != null && midLatArr.size == midLngArr.size) {
@@ -87,25 +89,50 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
             emptyList()
         }
 
-        // 전체 경로 좌표 리스트 생성 (출발지 + 경유지 + 도착지)
-        val pathCoords = mutableListOf<LatLng>()
-        pathCoords.add(startLatLng) // 출발지 먼저 추가
-
-        // 경유지 마커 및 좌표 추가 (segments 기반)
-        segments.forEach { seg ->
-            if (seg.lat != null && seg.lng != null) {
-                val point = LatLng(seg.lat, seg.lng)
-                pathCoords.add(point)
-                // 이미 위에서 마커 찍었으니 여기선 생략 가능
+        // ★ 승차/하차 정류장 마커 추가 ★
+        val boardingSegment = segments.find { it.type == "일반" || it.type == "직행" }
+        val alightSegment = segments.find { it.type == "하차" }
+        // 승차 정류장 (진한 초록)
+        if (boardingSegment?.lat != null && boardingSegment.lng != null) {
+            Marker().apply {
+                position = LatLng(boardingSegment.lat, boardingSegment.lng)
+                captionText = boardingSegment.stationName ?: "승차 정류장"
+                iconTintColor = android.graphics.Color.parseColor("#388E3C") // 진한 초록
+                map = naverMap
+            }
+        }
+        // 하차 정류장 (진한 초록)
+        if (alightSegment?.lat != null && alightSegment.lng != null) {
+            Marker().apply {
+                position = LatLng(alightSegment.lat, alightSegment.lng)
+                captionText = alightSegment.stationName ?: "하차 정류장"
+                iconTintColor = android.graphics.Color.parseColor("#388E3C") // 진한 초록
+                map = naverMap
             }
         }
 
-        // 도착지 좌표 추가 (만약 경유지 중에 도착지가 없을 경우)
-        if (pathCoords.last() != endLatLng) {
-            pathCoords.add(endLatLng)
+        // ★★★ 전체 경로 좌표 리스트 생성: 출발지 → 승차정류장 → 경유정류장들 → 하차정류장 → 도착지 ★★★
+        val pathCoords = mutableListOf<LatLng>()
+        pathCoords.add(startLatLng) // 출발지
+
+        if (boardingSegment?.lat != null && boardingSegment.lng != null) {
+            pathCoords.add(LatLng(boardingSegment.lat, boardingSegment.lng)) // 승차정류장
         }
 
-        // 하나의 PathOverlay로 경로 그리기 (출발지-경유지-도착지 전부 연결)
+        // 경유 정류장들(순서대로)
+        if (midLatArr != null && midLngArr != null && midLatArr.size == midLngArr.size) {
+            for (i in midLatArr.indices) {
+                pathCoords.add(LatLng(midLatArr[i], midLngArr[i]))
+            }
+        }
+
+        if (alightSegment?.lat != null && alightSegment.lng != null) {
+            pathCoords.add(LatLng(alightSegment.lat, alightSegment.lng)) // 하차정류장
+        }
+
+        pathCoords.add(endLatLng) // 도착지
+
+        // 폴리라인(경로) 그리기
         PathOverlay().apply {
             coords = pathCoords
             color = android.graphics.Color.parseColor("#4CAF50")
@@ -122,16 +149,22 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
                 boundsBuilder.include(LatLng(it.lat, it.lng))
             }
         }
-        // ★ 중간 정류장도 카메라 영역에 포함
         if (midLatArr != null && midLngArr != null && midLatArr.size == midLngArr.size) {
             for (i in midLatArr.indices) {
                 boundsBuilder.include(LatLng(midLatArr[i], midLngArr[i]))
             }
         }
+        if (boardingSegment?.lat != null && boardingSegment.lng != null) {
+            boundsBuilder.include(LatLng(boardingSegment.lat, boardingSegment.lng))
+        }
+        if (alightSegment?.lat != null && alightSegment.lng != null) {
+            boundsBuilder.include(LatLng(alightSegment.lat, alightSegment.lng))
+        }
         val bounds = boundsBuilder.build()
         val cameraUpdate = CameraUpdate.fitBounds(bounds, 100)
         naverMap.moveCamera(cameraUpdate)
     }
+
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (::locationSource.isInitialized) {
