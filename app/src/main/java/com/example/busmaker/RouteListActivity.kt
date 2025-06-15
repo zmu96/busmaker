@@ -138,14 +138,6 @@ class RouteListActivity : AppCompatActivity() {
                                                     it.cityCode?.toIntOrNull() == cityCode && routeNodeIdList.contains(it.nodeId)
                                                 }
 
-
-                                                // ① === 여기에 로그 찍기 ===
-                                                Log.d("디버그", "[matchedStart] nodeId=${matchedStart?.nodeId} / cityCode=${matchedStart?.cityCode}")
-                                                Log.d("디버그", "[matchedEnd] nodeId=${matchedEnd?.nodeId} / cityCode=${matchedEnd?.cityCode}")
-                                                Log.d("디버그", "[stations.size] = ${stations.size}, nodeIds = ${stations.map { it.nodeId }}")
-
-
-
                                                 val startIdx = if (matchedStart != null)
                                                     stations.indexOfFirst { it.nodeId == matchedStart.nodeId }
                                                 else -1
@@ -155,15 +147,6 @@ class RouteListActivity : AppCompatActivity() {
 
                                                 val endStationId = if (endIdx != -1) stations[endIdx].nodeId else null
                                                 val endStationName = if (endIdx != -1) stations[endIdx].nodeName else null
-
-
-                                                // ② === 그리고 여기에도 찍기 ===
-                                                Log.d("디버그", "[startIdx] = $startIdx, [endIdx] = $endIdx")
-                                                val stationCount = endIdx - startIdx
-                                                Log.d("디버그", "[stationCount] = $stationCount")
-
-
-
 
                                                 // ★★ 직통 경로 조건: 출발정류장 인덱스 < 도착정류장 인덱스
                                                 if (startIdx != -1 && endIdx != -1 && startIdx != endIdx && endStationId != null && endStationName != null) {
@@ -184,24 +167,21 @@ class RouteListActivity : AppCompatActivity() {
                                                         else 0
 
                                                     // 2. 버스 이동 시간 (정류장 당 2분, nodeId 조합 중 최소값)
-                                                    // 1. 출발/도착 정류장 이름을 가져온다
                                                     val startName = identifiedStartStation.nodeName
                                                     val endName = identifiedEndStation.nodeName
 
-// 2. 출발/도착 후보 모두 구하기 (nodeName=정류장 이름이 같을 수 있으니 전부 찾음)
                                                     val startCandidates = stations.withIndex().filter { it.value.nodeName == startName }
                                                     val endCandidates = stations.withIndex().filter { it.value.nodeName == endName }
 
                                                     var minStationCount = Int.MAX_VALUE
 
-// 3. 모든 조합에서 최단 거리 찾기 (항상 양수)
                                                     for (start in startCandidates) {
                                                         for (end in endCandidates) {
                                                             val startIdx = start.index
                                                             val endIdx = end.index
                                                             val total = stations.size
 
-                                                            val diff = kotlin.math.abs(endIdx - startIdx)   // ← abs() 사용!!
+                                                            val diff = kotlin.math.abs(endIdx - startIdx)
                                                             val forward = diff
                                                             val backward = total - diff
                                                             val stationCount = minOf(forward, backward)
@@ -211,10 +191,6 @@ class RouteListActivity : AppCompatActivity() {
                                                     }
 
                                                     val busTravelTimeMin = minStationCount * 2  // 정류장 당 2분
-
-                                                    Log.d("디버그", "[최소 거리 조합] stationCount=$minStationCount, busTravelTimeMin=$busTravelTimeMin")
-
-
 
                                                     // 3. 실제 하차 정류장 → 도착지 도보 시간
                                                     val (endBusStopLat, endBusStopLng) = findLatLngByNodeId(
@@ -229,7 +205,7 @@ class RouteListActivity : AppCompatActivity() {
                                                             )
                                                         else 0
 
-                                                    // 4. 전체 소요 시간 합산
+                                                    // 4. 전체 소요 시간 합산 (정수값으로 추가)
                                                     val numericTotalTimeMin = walkTimeToStartStopMin + busTravelTimeMin + walkTimeFromEndStopMin
                                                     val totalHours = numericTotalTimeMin / 60
                                                     val totalRemainderMinutes = numericTotalTimeMin % 60
@@ -265,11 +241,10 @@ class RouteListActivity : AppCompatActivity() {
                                                         RouteSegment(
                                                             type = busTypeDisplay,
                                                             summary = "$busTypeDisplay | ${stations[startIdx].nodeName} 승차",
-                                                            detail = "$busNumber | ${busTravelTimeMin}분 (${minStationCount}정류장)",   // ★★★ 이 부분! ★★★
+                                                            detail = "$busNumber | ${busTravelTimeMin}분 (${minStationCount}정류장)",
                                                             color = busColor
                                                         )
                                                     )
-
                                                     segmentsList.add(
                                                         RouteSegment(
                                                             type = "하차",
@@ -290,17 +265,18 @@ class RouteListActivity : AppCompatActivity() {
                                                     val timeRangeAndFareStr =
                                                         "버스 $busNumber (${stations[startIdx].nodeName} → $endStationName) | 요금 1450원"
 
+                                                    // --- 핵심: numericTotalTimeMin 필드 꼭 추가! ---
                                                     newRouteInfoList.add(
                                                         RouteInformation(
                                                             label = label,
                                                             totalTime = totalTimeStrForDisplay,
                                                             timeRangeAndFare = timeRangeAndFareStr,
                                                             segments = segmentsList,
-                                                            pinFixed = false
+                                                            pinFixed = false,
+                                                            numericTotalTimeMin = numericTotalTimeMin // <- 반드시 필요!
                                                         )
                                                     )
                                                 }
-
                                             }
                                         }
                                     }
@@ -309,10 +285,31 @@ class RouteListActivity : AppCompatActivity() {
                         }
                     }
 
+                    // === ★★★ 정렬 + 레이블 재할당 ★★★ ===
                     runOnUiThread {
+                        Log.d("RouteListActivity", "UI 업데이트 전 newRouteInfoList 크기: ${newRouteInfoList.size}")
+
+                        // 1. 중복 제거 (필요시 기준을 엄격히 조합 가능)
+                        val distinctRoutes = newRouteInfoList.distinctBy { it.timeRangeAndFare }
+
+                        // 2. 총 소요시간 오름차순 정렬
+                        val sortedRoutes = distinctRoutes.sortedBy { it.numericTotalTimeMin }
+
+                        // 3. "경로 1", "경로 2", ... 레이블 재할당
+                        val finalRoutes = sortedRoutes.mapIndexed { index, routeInfo ->
+                            if (routeInfo.label.startsWith("경로") || routeInfo.label == "추천 경로" || routeInfo.label.isBlank()) {
+                                routeInfo.copy(label = "경로 ${index + 1}")
+                            } else {
+                                routeInfo
+                            }
+                        }
+
+                        // 어댑터에 반영
                         routeInfoList.clear()
-                        routeInfoList.addAll(newRouteInfoList.distinctBy { it.timeRangeAndFare })
+                        routeInfoList.addAll(finalRoutes)
+
                         routeListAdapter.notifyDataSetChanged()
+
                         if (routeInfoList.isEmpty()) {
                             Toast.makeText(this@RouteListActivity, "두 정류소를 모두 지나는 노선이 없습니다.", Toast.LENGTH_SHORT).show()
                         }
@@ -326,7 +323,4 @@ class RouteListActivity : AppCompatActivity() {
             }
         }
     }
-
-
-
 }
