@@ -1,24 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:padding="20dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="false">
+
 
     <!-- 출발지 입력 (EditText + X버튼) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:layout_marginTop="18dp">
 
         <EditText
             android:id="@+id/et_start"
             android:hint="출발지 입력"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="44dp"
             android:layout_weight="1"
-            android:inputType="text"/>
+            android:background="@drawable/rounded_edittext"
+            android:paddingStart="16dp"
+            android:paddingEnd="40dp"
+            android:textSize="16sp"
+            android:inputType="text" />
 
         <ImageButton
             android:id="@+id/btn_clear_start"
@@ -27,7 +35,9 @@
             android:background="@android:color/transparent"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             android:contentDescription="지우기"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:layout_gravity="center_vertical"
+            android:paddingEnd="2dp"/>
     </LinearLayout>
 
     <!-- 도착지 입력 (EditText + X버튼) -->
@@ -41,9 +51,13 @@
             android:id="@+id/et_end"
             android:hint="도착지 입력"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="44dp"
             android:layout_weight="1"
-            android:inputType="text"/>
+            android:background="@drawable/rounded_edittext"
+            android:paddingStart="16dp"
+            android:paddingEnd="40dp"
+            android:textSize="16sp"
+            android:inputType="text" />
 
         <ImageButton
             android:id="@+id/btn_clear_end"
@@ -52,7 +66,9 @@
             android:background="@android:color/transparent"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             android:contentDescription="지우기"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:layout_gravity="center_vertical"
+            android:paddingEnd="2dp"/>
     </LinearLayout>
 
     <!-- 경로 검색 버튼 -->
@@ -60,51 +76,41 @@
         android:id="@+id/btn_search"
         android:text="경로 검색"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"/>
+        android:layout_height="48dp"
+        android:layout_marginTop="16dp"
+        android:textColor="@android:color/white"
+        android:background="@drawable/rounded_button"
+        android:textSize="16sp"
+        android:elevation="2dp"/>
 
-    <!-- 최근 출발지 기록 버튼 영역 -->
+    <!-- 최근 출발지 기록 Chip 영역 -->
     <TextView
         android:text="최근 출발지"
         android:textStyle="bold"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="24dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-
-    <HorizontalScrollView
+        android:layout_height="wrap_content"/>
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/recentStartGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fillViewport="true"
-        android:scrollbars="horizontal">
+        android:singleLine="true"
+        app:chipSpacing="8dp"
+        android:layout_marginTop="4dp"/>
 
-        <LinearLayout
-            android:id="@+id/recentStartContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="start" />
-    </HorizontalScrollView>
-
-    <!-- 최근 도착지 기록 버튼 영역 -->
+    <!-- 최근 도착지 기록 Chip 영역 -->
     <TextView
         android:text="최근 도착지"
         android:textStyle="bold"
         android:layout_marginTop="20dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-
-    <HorizontalScrollView
+        android:layout_height="wrap_content"/>
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/recentEndGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fillViewport="true"
-        android:scrollbars="horizontal">
-
-        <LinearLayout
-            android:id="@+id/recentEndContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="start" />
-    </HorizontalScrollView>
+        android:singleLine="true"
+        app:chipSpacing="8dp"
+        android:layout_marginTop="4dp"/>
 
 </LinearLayout>

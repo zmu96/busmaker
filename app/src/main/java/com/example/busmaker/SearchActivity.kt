@@ -4,16 +4,15 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.busmaker.data.api.NaverApiClient
 import kotlinx.coroutines.launch
 import androidx.core.widget.addTextChangedListener
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import androidx.core.content.ContextCompat
 
 class SearchActivity : AppCompatActivity() {
 
@@ -22,8 +21,8 @@ class SearchActivity : AppCompatActivity() {
     private lateinit var btnClearStart: ImageButton
     private lateinit var btnClearEnd: ImageButton
     private lateinit var btnSearch: Button
-    private lateinit var recentStartContainer: LinearLayout
-    private lateinit var recentEndContainer: LinearLayout
+    private lateinit var recentStartGroup: ChipGroup
+    private lateinit var recentEndGroup: ChipGroup
 
     private val PREFS_NAME = "recent_places"
     private val KEY_STARTS = "recent_starts"
@@ -39,8 +38,8 @@ class SearchActivity : AppCompatActivity() {
         btnClearStart = findViewById(R.id.btn_clear_start)
         btnClearEnd = findViewById(R.id.btn_clear_end)
         btnSearch = findViewById(R.id.btn_search)
-        recentStartContainer = findViewById(R.id.recentStartContainer)
-        recentEndContainer = findViewById(R.id.recentEndContainer)
+        recentStartGroup = findViewById(R.id.recentStartGroup)
+        recentEndGroup = findViewById(R.id.recentEndGroup)
 
         // ------ ✨ "X" 버튼 기능 추가 코드 ------
         etStart.addTextChangedListener {
@@ -58,9 +57,9 @@ class SearchActivity : AppCompatActivity() {
         val recentStartList = loadRecentPlaces(KEY_STARTS)
         val recentEndList = loadRecentPlaces(KEY_ENDS)
 
-        // 최근 기록 버튼 생성
-        createRecentButtons(recentStartList, recentStartContainer, etStart)
-        createRecentButtons(recentEndList, recentEndContainer, etEnd)
+        // 최근 기록 Chip 생성
+        createRecentChips(recentStartList, recentStartGroup, etStart)
+        createRecentChips(recentEndList, recentEndGroup, etEnd)
 
         btnSearch.setOnClickListener {
             val startSearchTerm = etStart.text.toString().trim()
@@ -71,11 +70,11 @@ class SearchActivity : AppCompatActivity() {
                 saveRecentPlace(KEY_STARTS, startSearchTerm)
                 saveRecentPlace(KEY_ENDS, endSearchTerm)
 
-                // 최근 기록 다시 불러와서 버튼 갱신
+                // 최근 기록 다시 불러와서 Chip 갱신
                 val updatedStartList = loadRecentPlaces(KEY_STARTS)
                 val updatedEndList = loadRecentPlaces(KEY_ENDS)
-                createRecentButtons(updatedStartList, recentStartContainer, etStart)
-                createRecentButtons(updatedEndList, recentEndContainer, etEnd)
+                createRecentChips(updatedStartList, recentStartGroup, etStart)
+                createRecentChips(updatedEndList, recentEndGroup, etEnd)
 
                 // 실제 검색 API 호출 함수 실행
                 searchPlaces(startSearchTerm, endSearchTerm)
@@ -85,22 +84,23 @@ class SearchActivity : AppCompatActivity() {
         }
     }
 
-    private fun createRecentButtons(
+    // *** Chip 생성 함수 ***
+    private fun createRecentChips(
         items: List<String>,
-        container: LinearLayout,
+        group: ChipGroup,
         targetEditText: EditText
     ) {
-        container.removeAllViews()
+        group.removeAllViews()
         for (item in items) {
-            val button = Button(this).apply {
+            val chip = Chip(this).apply {
                 text = item
-                textSize = 14f
-                setPadding(12, 6, 12, 6)
-                setOnClickListener {
-                    targetEditText.setText(item)
-                }
+                isClickable = true
+                isCheckable = false
+                setChipBackgroundColorResource(R.color.chip_background)
+                setTextColor(ContextCompat.getColor(this@SearchActivity, R.color.chip_text))
+                setOnClickListener { targetEditText.setText(item) }
             }
-            container.addView(button)
+            group.addView(chip)
         }
     }
 
