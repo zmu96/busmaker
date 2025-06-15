@@ -3,19 +3,24 @@ package com.example.busmaker
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.busmaker.data.api.NaverApiClient
 import kotlinx.coroutines.launch
+import androidx.core.widget.addTextChangedListener
 
 class SearchActivity : AppCompatActivity() {
 
     private lateinit var etStart: EditText
     private lateinit var etEnd: EditText
+    private lateinit var btnClearStart: ImageButton
+    private lateinit var btnClearEnd: ImageButton
     private lateinit var btnSearch: Button
     private lateinit var recentStartContainer: LinearLayout
     private lateinit var recentEndContainer: LinearLayout
@@ -31,9 +36,23 @@ class SearchActivity : AppCompatActivity() {
 
         etStart = findViewById(R.id.et_start)
         etEnd = findViewById(R.id.et_end)
+        btnClearStart = findViewById(R.id.btn_clear_start)
+        btnClearEnd = findViewById(R.id.btn_clear_end)
         btnSearch = findViewById(R.id.btn_search)
         recentStartContainer = findViewById(R.id.recentStartContainer)
         recentEndContainer = findViewById(R.id.recentEndContainer)
+
+        // ------ ✨ "X" 버튼 기능 추가 코드 ------
+        etStart.addTextChangedListener {
+            btnClearStart.visibility = if (it.isNullOrEmpty()) View.GONE else View.VISIBLE
+        }
+        btnClearStart.setOnClickListener { etStart.text.clear() }
+
+        etEnd.addTextChangedListener {
+            btnClearEnd.visibility = if (it.isNullOrEmpty()) View.GONE else View.VISIBLE
+        }
+        btnClearEnd.setOnClickListener { etEnd.text.clear() }
+        // --------------------------------------
 
         // 앱 실행 시 SharedPreferences에서 최근 기록 불러오기
         val recentStartList = loadRecentPlaces(KEY_STARTS)
