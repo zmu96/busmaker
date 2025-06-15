@@ -1,116 +1,130 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
-    android:padding="20dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:padding="20dp"
     android:fitsSystemWindows="false">
 
-
-    <!-- 출발지 입력 (EditText + X버튼) -->
+    <!-- 기존 LinearLayout 내용을 FrameLayout 안에 넣음 -->
     <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="18dp">
+        android:layout_height="match_parent">
 
-        <EditText
-            android:id="@+id/et_start"
-            android:hint="출발지 입력"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:background="@drawable/rounded_edittext"
-            android:paddingStart="16dp"
-            android:paddingEnd="40dp"
+        <!-- 출발지 입력 (EditText + X버튼) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="18dp">
+
+            <EditText
+                android:id="@+id/et_start"
+                android:hint="출발지 입력"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:background="@drawable/rounded_edittext"
+                android:paddingStart="16dp"
+                android:paddingEnd="40dp"
+                android:textSize="16sp"
+                android:inputType="text" />
+
+            <ImageButton
+                android:id="@+id/btn_clear_start"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@android:color/transparent"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="지우기"
+                android:visibility="gone"
+                android:layout_gravity="center_vertical"
+                android:paddingEnd="2dp"/>
+        </LinearLayout>
+
+        <!-- 도착지 입력 (EditText + X버튼) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <EditText
+                android:id="@+id/et_end"
+                android:hint="도착지 입력"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:background="@drawable/rounded_edittext"
+                android:paddingStart="16dp"
+                android:paddingEnd="40dp"
+                android:textSize="16sp"
+                android:inputType="text" />
+
+            <ImageButton
+                android:id="@+id/btn_clear_end"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@android:color/transparent"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="지우기"
+                android:visibility="gone"
+                android:layout_gravity="center_vertical"
+                android:paddingEnd="2dp"/>
+        </LinearLayout>
+
+        <!-- 경로 검색 버튼 -->
+        <Button
+            android:id="@+id/btn_search"
+            android:text="경로 검색"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/white"
+            android:background="@drawable/rounded_button"
             android:textSize="16sp"
-            android:inputType="text" />
+            android:elevation="2dp"/>
 
-        <ImageButton
-            android:id="@+id/btn_clear_start"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:contentDescription="지우기"
-            android:visibility="gone"
-            android:layout_gravity="center_vertical"
-            android:paddingEnd="2dp"/>
+        <!-- 최근 출발지 기록 Chip 영역 -->
+        <TextView
+            android:text="최근 출발지"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/recentStartGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            app:chipSpacing="8dp"
+            android:layout_marginTop="4dp"/>
+
+        <!-- 최근 도착지 기록 Chip 영역 -->
+        <TextView
+            android:text="최근 도착지"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/recentEndGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            app:chipSpacing="8dp"
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- 도착지 입력 (EditText + X버튼) -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="8dp">
-
-        <EditText
-            android:id="@+id/et_end"
-            android:hint="도착지 입력"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:background="@drawable/rounded_edittext"
-            android:paddingStart="16dp"
-            android:paddingEnd="40dp"
-            android:textSize="16sp"
-            android:inputType="text" />
-
-        <ImageButton
-            android:id="@+id/btn_clear_end"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:contentDescription="지우기"
-            android:visibility="gone"
-            android:layout_gravity="center_vertical"
-            android:paddingEnd="2dp"/>
-    </LinearLayout>
-
-    <!-- 경로 검색 버튼 -->
-    <Button
-        android:id="@+id/btn_search"
-        android:text="경로 검색"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="16dp"
-        android:textColor="@android:color/white"
-        android:background="@drawable/rounded_button"
-        android:textSize="16sp"
-        android:elevation="2dp"/>
-
-    <!-- 최근 출발지 기록 Chip 영역 -->
-    <TextView
-        android:text="최근 출발지"
-        android:textStyle="bold"
-        android:layout_marginTop="24dp"
+    <!-- 우측 하단에 busmaker 로고 아이콘 작게 배치 -->
+    <ImageView
+        android:id="@+id/logoWatermark"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/recentStartGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:singleLine="true"
-        app:chipSpacing="8dp"
-        android:layout_marginTop="4dp"/>
-
-    <!-- 최근 도착지 기록 Chip 영역 -->
-    <TextView
-        android:text="최근 도착지"
-        android:textStyle="bold"
-        android:layout_marginTop="20dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/recentEndGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:singleLine="true"
-        app:chipSpacing="8dp"
-        android:layout_marginTop="4dp"/>
-
-</LinearLayout>
+        android:layout_height="159dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="Busmaker Logo Watermark"
+        android:src="@drawable/ic_busmaker_logo" />
+</FrameLayout>
