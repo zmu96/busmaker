@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.busmaker.R
 import com.example.busmaker.data.model.RouteInformation
 import android.content.Intent
+import com.google.gson.Gson
 
 
 class RouteListAdapter(
@@ -106,13 +107,9 @@ class RouteListAdapter(
 
         // 안내시작 버튼 클릭 리스너
         holder.btnStartNavigation.setOnClickListener {
-            // 승차 정류장(구간) 찾기
-            val boardingSegment = route.segments.find {
-                it.type != "도보" && it.type != "하차"
-            }
-            // 하차 정류장(구간) 찾기
+            // 디버깅 로그 (생략 가능)
+            val boardingSegment = route.segments.find { it.type != "도보" && it.type != "하차" }
             val alightSegment = route.segments.find { it.type == "하차" }
-
             android.util.Log.d(
                 "RouteDebug",
                 "start=(${route.startLat},${route.startLng}), end=(${route.endLat},${route.endLng}), " +
@@ -120,22 +117,15 @@ class RouteListAdapter(
                         "alight=(${alightSegment?.lat},${alightSegment?.lng},${alightSegment?.stationName})"
             )
 
-
             val context = holder.itemView.context
+            val segmentsJson = Gson().toJson(route.segments) // 전체 구간을 JSON으로!
+
             val intent = Intent(context, com.example.busmaker.RouteMapActivity::class.java).apply {
-                // 기존 출발/도착 좌표 (필요에 따라 route에서 직접 가져오거나 Activity에서 내려준 값을 써도 됨)
                 putExtra("startLat", route.startLat ?: 0.0)
                 putExtra("startLng", route.startLng ?: 0.0)
                 putExtra("endLat", route.endLat ?: 0.0)
                 putExtra("endLng", route.endLng ?: 0.0)
-                // 승차 정류장
-                putExtra("busBoardingLat", boardingSegment?.lat ?: 0.0)
-                putExtra("busBoardingLng", boardingSegment?.lng ?: 0.0)
-                putExtra("busBoardingName", boardingSegment?.stationName ?: "")
-                // 하차 정류장
-                putExtra("busAlightLat", alightSegment?.lat ?: 0.0)
-                putExtra("busAlightLng", alightSegment?.lng ?: 0.0)
-                putExtra("busAlightName", alightSegment?.stationName ?: "")
+                putExtra("segmentsJson", segmentsJson)   // ★ 구간 정보 전체 전달
             }
             context.startActivity(intent)
         }
