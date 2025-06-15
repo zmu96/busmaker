@@ -21,6 +21,9 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var endLatLng: LatLng
     private lateinit var locationSource: FusedLocationSource
 
+    private var myLocationMarker: Marker? = null // 내 위치 마커 구현
+
+
     // ★ 경유 정류장 마커 리스트 & 표시 상태
     private val midMarkers = mutableListOf<Marker>()
     private var midMarkersVisible = true
@@ -67,6 +70,23 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
         naverMap.locationSource = locationSource
         naverMap.uiSettings.isLocationButtonEnabled = true
         naverMap.locationTrackingMode = LocationTrackingMode.Follow
+
+        // 내 위치 리스너
+        naverMap.addOnLocationChangeListener { location ->
+            val myLatLng = LatLng(location.latitude, location.longitude)
+
+            if (myLocationMarker == null) {
+                myLocationMarker = Marker().apply {
+                    position = myLatLng
+                    iconTintColor = android.graphics.Color.BLUE
+                    // icon = OverlayImage.fromResource(R.drawable.ic_my_location_custom) // 커스텀 아이콘 쓸 경우
+                    map = naverMap
+                }
+            } else {
+                myLocationMarker!!.position = myLatLng
+            }
+        }
+
 
         // 출발지 마커
         Marker().apply {
