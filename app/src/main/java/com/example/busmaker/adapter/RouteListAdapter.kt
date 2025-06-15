@@ -12,7 +12,6 @@ import com.example.busmaker.data.model.RouteInformation
 import android.content.Intent
 import com.google.gson.Gson
 
-
 class RouteListAdapter(
     private val routes: List<RouteInformation>,
     private val onStartNavigation: (RouteInformation) -> Unit
@@ -81,9 +80,6 @@ class RouteListAdapter(
                 seg.type == "도보" -> "도보(${seg.detail})"
                 seg.type == "하차" -> "하차"
                 seg.type == "일반" || seg.type == "직행" || seg.type == "버스" -> {
-                    // "2분" 혹은 "8분" 등만 추출
-                    // seg.detail이 "68 | 2분 (1정류장)" 이런 식이면 시간만 뽑기
-                    // detail에서 "분" 앞 숫자만 추출
                     val minuteRegex = Regex("(\\d+)분")
                     val match = minuteRegex.find(seg.detail)
                     val timeStr = match?.value ?: ""
@@ -96,18 +92,15 @@ class RouteListAdapter(
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10f)
                 setTextColor(Color.DKGRAY)
                 gravity = android.view.Gravity.CENTER
-                setPadding(0, 4, 0, 0) // 위 여백
-                // 필요시 bold/배경 등 조정 가능
+                setPadding(0, 4, 0, 0)
             }
             barWithText.addView(labelView)
 
-            // transportBar(가로) 안에 barWithText(세로)를 추가
             holder.transportBar.addView(barWithText)
         }
 
         // 안내시작 버튼 클릭 리스너
         holder.btnStartNavigation.setOnClickListener {
-            // 디버깅 로그 (생략 가능)
             val boardingSegment = route.segments.find { it.type != "도보" && it.type != "하차" }
             val alightSegment = route.segments.find { it.type == "하차" }
             android.util.Log.d(
@@ -126,9 +119,12 @@ class RouteListAdapter(
                 putExtra("endLat", route.endLat ?: 0.0)
                 putExtra("endLng", route.endLng ?: 0.0)
                 putExtra("segmentsJson", segmentsJson)   // ★ 구간 정보 전체 전달
+
+                // ▼▼▼ 중간 정류장 좌표 리스트도 같이 전달 ▼▼▼
+                putExtra("stationLatList", route.stationLatList?.toDoubleArray())
+                putExtra("stationLngList", route.stationLngList?.toDoubleArray())
             }
             context.startActivity(intent)
         }
-
     }
 }

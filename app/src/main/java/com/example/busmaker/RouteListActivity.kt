@@ -44,7 +44,7 @@ class RouteListActivity : AppCompatActivity() {
                 putExtra("startLng", startLng)
                 putExtra("endLat", endLat)
                 putExtra("endLng", endLng)
-                // 필요하다면 info 객체도 추가
+                // 아래 두 줄은 RouteListAdapter에서 Intent로 넘겨줌(정보를 담았으므로 생략)
             }
             startActivity(intent)
         }
@@ -54,10 +54,10 @@ class RouteListActivity : AppCompatActivity() {
     }
 
     private fun findNearbyStationsAndRoutes(
-        userStartLat: Double, // 출발지 위도
-        userStartLng: Double, // 출발지 경도
-        userEndLat: Double,   // 도착지 위도
-        userEndLng: Double    // 도착지 경도
+        userStartLat: Double,
+        userStartLng: Double,
+        userEndLat: Double,
+        userEndLng: Double
     ) {
         lifecycleScope.launch {
             try {
@@ -228,6 +228,37 @@ class RouteListActivity : AppCompatActivity() {
                                                     }
                                                     val label = if (newRouteInfoList.isEmpty()) "추천 경로" else "경로 ${newRouteInfoList.size + 1}"
 
+                                                    // 중간 정류장 위/경도 리스트 생성
+                                                    // 중간 정류장 위/경도 리스트 생성
+                                                    val midStationLatList = mutableListOf<Double>()
+                                                    val midStationLngList = mutableListOf<Double>()
+                                                    if (startIdx != -1 && endIdx != -1) {
+                                                        // 역방향: 순환노선이 아니면 무시, 또는 구간 차이가 너무 크면 무시
+                                                        val totalStations = stations.size
+                                                        val absDiff = kotlin.math.abs(startIdx - endIdx)
+                                                        if (absDiff > 1 && absDiff < totalStations / 2) {
+                                                            if (startIdx < endIdx) {
+                                                                for (i in (startIdx + 1) until endIdx) {
+                                                                    val s = stations[i]
+                                                                    if (s.gpsLati != null && s.gpsLong != null) {
+                                                                        midStationLatList.add(s.gpsLati)
+                                                                        midStationLngList.add(s.gpsLong)
+                                                                    }
+                                                                }
+                                                            } else if (startIdx > endIdx) {
+                                                                for (i in (startIdx - 1) downTo (endIdx + 1)) {
+                                                                    val s = stations[i]
+                                                                    if (s.gpsLati != null && s.gpsLong != null) {
+                                                                        midStationLatList.add(s.gpsLati)
+                                                                        midStationLngList.add(s.gpsLong)
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+
+                                                    Log.d("MidStationDebug", "startIdx=$startIdx, endIdx=$endIdx, 중간정류장 개수=${midStationLatList.size}")
+
                                                     val segmentsList = mutableListOf<RouteSegment>()
                                                     segmentsList.add(
                                                         RouteSegment(
@@ -243,27 +274,24 @@ class RouteListActivity : AppCompatActivity() {
                                                             summary = "$busTypeDisplay | ${stations[startIdx].nodeName} 승차",
                                                             detail = "$busNumber | ${busTravelTimeMin}분 (${minStationCount}정류장)",
                                                             color = busColor,
-                                                            lat = startBusStopLat,                   // 승차 정류장 위도
-                                                            lng = startBusStopLng,                   // 승차 정류장 경도
-                                                            stationName = stations[startIdx].nodeName// 승차 정류장 이름
+                                                            lat = startBusStopLat,
+                                                            lng = startBusStopLng,
+                                                            stationName = stations[startIdx].nodeName
                                                         )
                                                     )
-
                                                     Log.d(
                                                         "SegmentCreateDebug",
                                                         "승차lat=$startBusStopLat, lng=$startBusStopLng, name=${stations[startIdx].nodeName}"
                                                     )
-
-
                                                     segmentsList.add(
                                                         RouteSegment(
                                                             type = "하차",
                                                             summary = "$endStationName 하차",
                                                             detail = "",
                                                             color = android.graphics.Color.parseColor("#BBBBBB"),
-                                                            lat = endBusStopLat,                     // 하차 정류장 위도
-                                                            lng = endBusStopLng,                     // 하차 정류장 경도
-                                                            stationName = endStationName             // 하차 정류장 이름
+                                                            lat = endBusStopLat,
+                                                            lng = endBusStopLng,
+                                                            stationName = endStationName
                                                         )
                                                     )
                                                     segmentsList.add(
@@ -290,7 +318,10 @@ class RouteListActivity : AppCompatActivity() {
                                                             startLat = userStartLat,
                                                             startLng = userStartLng,
                                                             endLat = userEndLat,
-                                                            endLng = userEndLng// <- 반드시 필요!
+                                                            endLng = userEndLng,
+                                                            // ★ 추가: 중간 정류장 위/경도 리스트
+                                                            stationLatList = midStationLatList,
+                                                            stationLngList = midStationLngList
                                                         )
                                                     )
                                                 }

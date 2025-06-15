@@ -24,7 +24,7 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_route_map)
 
-        // 전달받은 좌표
+        // 출발/도착 좌표 받아오기 (기본값은 서울 시청)
         val startLat = intent.getDoubleExtra("startLat", 37.5665)
         val startLng = intent.getDoubleExtra("startLng", 126.9780)
         val endLat = intent.getDoubleExtra("endLat", 37.5665)
@@ -35,7 +35,6 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
         locationSource = FusedLocationSource(this, 1000)
 
-        // 길찾기 버튼 연결 (기존)
         val btnSearchRoute = findViewById<ImageButton>(R.id.btnSearchRoute)
         btnSearchRoute.setOnClickListener {
             val intent = Intent(this, SearchActivity::class.java)
@@ -51,19 +50,35 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
         naverMap.uiSettings.isLocationButtonEnabled = true
         naverMap.locationTrackingMode = LocationTrackingMode.Follow
 
-        // 출발지/도착지 마커
+        // 출발지 마커
         Marker().apply {
             position = startLatLng
             captionText = "출발지"
             map = naverMap
         }
+        // 도착지 마커
         Marker().apply {
             position = endLatLng
             captionText = "도착지"
             map = naverMap
         }
 
-        // --- segmentsJson 받아서 파싱 ---
+        // ★★ 중간 정류장 마커 추가 ★★
+        val midLatArr = intent.getDoubleArrayExtra("stationLatList")
+        val midLngArr = intent.getDoubleArrayExtra("stationLngList")
+        if (midLatArr != null && midLngArr != null && midLatArr.size == midLngArr.size) {
+            for (i in midLatArr.indices) {
+                val point = LatLng(midLatArr[i], midLngArr[i])
+                Marker().apply {
+                    position = point
+                    captionText = "경유 정류장"
+                    iconTintColor = android.graphics.Color.parseColor("#A5D6A7")
+                    map = naverMap
+                }
+            }
+        }
+
+        // segmentsJson 받아서 파싱 (경유지 포함)
         val segmentsJson = intent.getStringExtra("segmentsJson")
         val segments: List<RouteSegment> = if (!segmentsJson.isNullOrEmpty()) {
             val listType = object : TypeToken<List<RouteSegment>>() {}.type
@@ -72,71 +87,46 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
             emptyList()
         }
 
-        // === [경로선 및 마커 동적 처리] ===
-        // 모든 경유지 좌표 리스트
+        // 전체 경로 좌표 리스트 생성 (출발지 + 경유지 + 도착지)
         val pathCoords = mutableListOf<LatLng>()
-        pathCoords.add(startLatLng)
+        pathCoords.add(startLatLng) // 출발지 먼저 추가
 
-        // 경로 시각화: 구간별로 폴리라인/마커/색상
-        var prevLatLng = startLatLng
-
-        segments.forEachIndexed { idx, seg ->
-            // 각 구간의 lat/lng가 있으면 마커/좌표 추가
+        // 경유지 마커 및 좌표 추가 (segments 기반)
+        segments.forEach { seg ->
             if (seg.lat != null && seg.lng != null) {
                 val point = LatLng(seg.lat, seg.lng)
                 pathCoords.add(point)
-                // 구간 타입별 마커
-                Marker().apply {
-                    position = point
-                    captionText = seg.stationName ?: seg.type
-                    // 타입별 색상 (예시)
-                    iconTintColor = when (seg.type) {
-                        "도보" -> android.graphics.Color.DKGRAY
-                        "일반" -> android.graphics.Color.parseColor("#4CAF50") // 초록
-                        "직행" -> android.graphics.Color.parseColor("#F44336") // 빨강
-                        "하차" -> android.graphics.Color.LTGRAY
-                        else -> seg.color
-                    }
-                    map = naverMap
-                }
-            }
-            // === 폴리라인(구간별) ===
-            // 다음 좌표를 미리 계산
-            val nextLatLng: LatLng? = when {
-                idx < segments.lastIndex && segments[idx + 1].lat != null && segments[idx + 1].lng != null ->
-                    LatLng(segments[idx + 1].lat!!, segments[idx + 1].lng!!)
-                idx == segments.lastIndex -> endLatLng
-                else -> null
-            }
-            // 폴리라인: prevLatLng ~ nextLatLng 구간
-            if (nextLatLng != null) {
-                PathOverlay().apply {
-                    coords = listOf(prevLatLng, nextLatLng)
-                    color = when (seg.type) {
-                        "도보" -> android.graphics.Color.parseColor("#757575")
-                        "일반" -> android.graphics.Color.parseColor("#4CAF50")
-                        "직행" -> android.graphics.Color.parseColor("#F44336")
-                        else -> seg.color
-                    }
-                    width = 8
-                    map = naverMap
-                }
-                prevLatLng = nextLatLng
+                // 이미 위에서 마커 찍었으니 여기선 생략 가능
             }
         }
 
-        // 마지막에 도착지점이 안들어가 있으면 추가
+        // 도착지 좌표 추가 (만약 경유지 중에 도착지가 없을 경우)
         if (pathCoords.last() != endLatLng) {
             pathCoords.add(endLatLng)
         }
 
-        // --- 카메라: 전체 지점 포함 ---
+        // 하나의 PathOverlay로 경로 그리기 (출발지-경유지-도착지 전부 연결)
+        PathOverlay().apply {
+            coords = pathCoords
+            color = android.graphics.Color.parseColor("#4CAF50")
+            width = 8
+            map = naverMap
+        }
+
+        // 카메라 영역 설정 (모든 좌표가 화면에 보이도록)
         val boundsBuilder = LatLngBounds.Builder()
             .include(startLatLng)
             .include(endLatLng)
         segments.forEach {
-            if (it.lat != null && it.lng != null)
+            if (it.lat != null && it.lng != null) {
                 boundsBuilder.include(LatLng(it.lat, it.lng))
+            }
+        }
+        // ★ 중간 정류장도 카메라 영역에 포함
+        if (midLatArr != null && midLngArr != null && midLatArr.size == midLngArr.size) {
+            for (i in midLatArr.indices) {
+                boundsBuilder.include(LatLng(midLatArr[i], midLngArr[i]))
+            }
         }
         val bounds = boundsBuilder.build()
         val cameraUpdate = CameraUpdate.fitBounds(bounds, 100)
