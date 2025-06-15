@@ -48,42 +48,88 @@ class RouteMapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onMapReady(naverMap: NaverMap) {
-        // LocationSource 연결 및 현재 위치 버튼 활성화
+        // 위치 소스, 현재 위치 버튼, 트래킹 모드
         naverMap.locationSource = locationSource
         naverMap.uiSettings.isLocationButtonEnabled = true
-
-        // 위치 추적 모드 설정 (현재 위치 따라가기)
         naverMap.locationTrackingMode = LocationTrackingMode.Follow
 
-        // 출발지 마커
+        // --- 출발지/도착지 LatLng ---
+        // (이미 위에서 받아온 startLatLng, endLatLng 사용)
+        // val startLatLng = LatLng(startLat, startLng)
+        // val endLatLng = LatLng(endLat, endLng)
+
+        // --- 정류장 좌표 ---
+        val busBoardingLat = intent.getDoubleExtra("busBoardingLat", 0.0)
+        val busBoardingLng = intent.getDoubleExtra("busBoardingLng", 0.0)
+        val busBoardingName = intent.getStringExtra("busBoardingName") ?: ""
+        val busAlightLat = intent.getDoubleExtra("busAlightLat", 0.0)
+        val busAlightLng = intent.getDoubleExtra("busAlightLng", 0.0)
+        val busAlightName = intent.getStringExtra("busAlightName") ?: ""
+
+        // --- 마커(출발/도착) ---
         Marker().apply {
             position = startLatLng
             captionText = "출발지"
             map = naverMap
         }
-
-        // 도착지 마커
         Marker().apply {
             position = endLatLng
             captionText = "도착지"
             map = naverMap
         }
 
-        // 출발지~도착지 경로선
+        // --- 승차 정류장 마커 ---
+        if (busBoardingLat != 0.0 && busBoardingLng != 0.0) {
+            Marker().apply {
+                position = LatLng(busBoardingLat, busBoardingLng)
+                captionText = busBoardingName.ifBlank { "승차 정류장" }
+                iconTintColor = android.graphics.Color.BLUE
+                map = naverMap
+            }
+        }
+
+        // --- 하차 정류장 마커 ---
+        if (busAlightLat != 0.0 && busAlightLng != 0.0) {
+            Marker().apply {
+                position = LatLng(busAlightLat, busAlightLng)
+                captionText = busAlightName.ifBlank { "하차 정류장" }
+                iconTintColor = android.graphics.Color.RED
+                map = naverMap
+            }
+        }
+
+        // --- [NEW] 경로선(폴리라인) : 출발→승차→하차→도착 순서로 꺾어서 그리기 ---
+        val pathCoords = mutableListOf<LatLng>()
+        pathCoords.add(startLatLng)
+        if (busBoardingLat != 0.0 && busBoardingLng != 0.0) {
+            pathCoords.add(LatLng(busBoardingLat, busBoardingLng))
+        }
+        if (busAlightLat != 0.0 && busAlightLng != 0.0) {
+            pathCoords.add(LatLng(busAlightLat, busAlightLng))
+        }
+        pathCoords.add(endLatLng)
+
         PathOverlay().apply {
-            coords = listOf(startLatLng, endLatLng)
+            coords = pathCoords
+            color = android.graphics.Color.parseColor("#2196F3") // 원하는 색상
+            width = 8
             map = naverMap
         }
 
-        // 카메라 위치를 출발지~도착지 모두 보이도록 이동
+        // --- 카메라: 4개 지점 모두 보이도록 ---
         val bounds = LatLngBounds.Builder()
             .include(startLatLng)
             .include(endLatLng)
+            .apply {
+                if (busBoardingLat != 0.0 && busBoardingLng != 0.0) include(LatLng(busBoardingLat, busBoardingLng))
+                if (busAlightLat != 0.0 && busAlightLng != 0.0) include(LatLng(busAlightLat, busAlightLng))
+            }
             .build()
-
-        val cameraUpdate = CameraUpdate.fitBounds(bounds, 100)
+        val cameraUpdate = com.naver.maps.map.CameraUpdate.fitBounds(bounds, 100)
         naverMap.moveCamera(cameraUpdate)
     }
+
+
 
     // 퍼미션 결과를 LocationSource에 전달
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

@@ -242,15 +242,28 @@ class RouteListActivity : AppCompatActivity() {
                                                             type = busTypeDisplay,
                                                             summary = "$busTypeDisplay | ${stations[startIdx].nodeName} 승차",
                                                             detail = "$busNumber | ${busTravelTimeMin}분 (${minStationCount}정류장)",
-                                                            color = busColor
+                                                            color = busColor,
+                                                            lat = startBusStopLat,                   // 승차 정류장 위도
+                                                            lng = startBusStopLng,                   // 승차 정류장 경도
+                                                            stationName = stations[startIdx].nodeName// 승차 정류장 이름
                                                         )
                                                     )
+
+                                                    Log.d(
+                                                        "SegmentCreateDebug",
+                                                        "승차lat=$startBusStopLat, lng=$startBusStopLng, name=${stations[startIdx].nodeName}"
+                                                    )
+
+
                                                     segmentsList.add(
                                                         RouteSegment(
                                                             type = "하차",
                                                             summary = "$endStationName 하차",
                                                             detail = "",
-                                                            color = android.graphics.Color.parseColor("#BBBBBB")
+                                                            color = android.graphics.Color.parseColor("#BBBBBB"),
+                                                            lat = endBusStopLat,                     // 하차 정류장 위도
+                                                            lng = endBusStopLng,                     // 하차 정류장 경도
+                                                            stationName = endStationName             // 하차 정류장 이름
                                                         )
                                                     )
                                                     segmentsList.add(
@@ -273,7 +286,11 @@ class RouteListActivity : AppCompatActivity() {
                                                             timeRangeAndFare = timeRangeAndFareStr,
                                                             segments = segmentsList,
                                                             pinFixed = false,
-                                                            numericTotalTimeMin = numericTotalTimeMin // <- 반드시 필요!
+                                                            numericTotalTimeMin = numericTotalTimeMin,
+                                                            startLat = userStartLat,
+                                                            startLng = userStartLng,
+                                                            endLat = userEndLat,
+                                                            endLng = userEndLng// <- 반드시 필요!
                                                         )
                                                     )
                                                 }
